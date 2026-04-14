@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "Patient": {
+      "title": "Patient",
+      "description": "A patient record",
+      "type": "object",
+      "properties": {
+        "doctorId": { "type": "string", "description": "The UID of the doctor who owns this record" },
+        "name": { "type": "string" },
+        "age": { "type": "number" },
+        "gender": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "history": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["doctorId", "name", "createdAt"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "An appointment record",
+      "type": "object",
+      "properties": {
+        "doctorId": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["scheduled", "completed", "cancelled"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["doctorId", "patientId", "date", "status", "createdAt"]
+    },
+    "Consultation": {
+      "title": "Consultation",
+      "description": "A consultation record",
+      "type": "object",
+      "properties": {
+        "doctorId": { "type": "string" },
+        "patientId": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "symptoms": { "type": "string" },
+        "repertorization": { "type": "string" },
+        "prescribedRemedy": { "type": "string" },
+        "potency": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["doctorId", "patientId", "date", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/patients/{patientId}": {
+      "schema": { "$ref": "#/entities/Patient" },
+      "description": "Patient records"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": { "$ref": "#/entities/Appointment" },
+      "description": "Appointments"
+    },
+    "/consultations/{consultationId}": {
+      "schema": { "$ref": "#/entities/Consultation" },
+      "description": "Consultations"
+    }
+  }
+}
