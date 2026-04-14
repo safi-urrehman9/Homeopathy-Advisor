@@ -48,11 +48,13 @@ export function Consultation() {
     }
     const qCons = query(
       collection(db, 'consultations'), 
-      where('patientId', '==', selectedPatient),
-      orderBy('createdAt', 'desc')
+      where('doctorId', '==', auth.currentUser.uid),
+      where('patientId', '==', selectedPatient)
     );
     const unsubCons = onSnapshot(qCons, (snapshot) => {
-      setPastConsultations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      docs.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setPastConsultations(docs);
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'consultations'));
     return () => unsubCons();
   }, [selectedPatient]);

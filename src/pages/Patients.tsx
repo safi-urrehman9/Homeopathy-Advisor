@@ -45,11 +45,13 @@ export function Patients() {
     }
     const qCons = query(
       collection(db, 'consultations'), 
-      where('patientId', '==', selectedPatientDetails.id),
-      orderBy('createdAt', 'desc')
+      where('doctorId', '==', auth.currentUser.uid),
+      where('patientId', '==', selectedPatientDetails.id)
     );
     const unsubCons = onSnapshot(qCons, (snapshot) => {
-      setPatientConsultations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      docs.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setPatientConsultations(docs);
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'consultations'));
     return () => unsubCons();
   }, [selectedPatientDetails]);
@@ -104,7 +106,7 @@ export function Patients() {
           </div>
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger>
+            <DialogTrigger asChild>
               <Button className="bg-teal-600 hover:bg-teal-700 text-white gap-2">
                 <Plus className="h-4 w-4" /> Add Patient
               </Button>

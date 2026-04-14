@@ -103,7 +103,7 @@ export function CalendarView() {
           </div>
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger>
+            <DialogTrigger asChild>
               <Button className="bg-teal-600 hover:bg-teal-700 text-white">
                 New Appointment
               </Button>
