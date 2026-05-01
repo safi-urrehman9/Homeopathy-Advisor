@@ -4,6 +4,17 @@ services:
     ports:
       - "6379:6379"
 
+  oorep-sidecar:
+    build:
+      context: .
+      dockerfile: oorep-sidecar/Dockerfile
+    ports:
+      - "5055:5055"
+    environment:
+      OOREP_MCP_BASE_URL: ${OOREP_MCP_BASE_URL:-https://www.oorep.com}
+      OOREP_MCP_LOG_LEVEL: ${OOREP_MCP_LOG_LEVEL:-info}
+      OOREP_MCP_CACHE_TTL_MS: ${OOREP_MCP_CACHE_TTL_MS:-300000}
+
   backend:
     build:
       context: .
@@ -15,13 +26,21 @@ services:
       DATABASE_URL: sqlite:////app/backend/instance/vitalforce.db
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: http://localhost:3000
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_FAST_MODEL: ${DEEPSEEK_FAST_MODEL:-deepseek-v4-flash}
+      DEEPSEEK_REASONING_MODEL: ${DEEPSEEK_REASONING_MODEL:-deepseek-v4-pro}
+      DEEPSEEK_TIMEOUT_SECONDS: ${DEEPSEEK_TIMEOUT_SECONDS:-60}
+      OOREP_SIDECAR_URL: http://oorep-sidecar:5055
+      OOREP_TIMEOUT_SECONDS: ${OOREP_TIMEOUT_SECONDS:-30}
+      AI_RECENT_CONSULTATION_LIMIT: ${AI_RECENT_CONSULTATION_LIMIT:-5}
       SECRET_KEY: ${SECRET_KEY}
       JWT_EXPIRES_IN_SECONDS: ${JWT_EXPIRES_IN_SECONDS:-604800}
     volumes:
       - sqlite-data:/app/backend/instance
     depends_on:
       - redis
+      - oorep-sidecar
 
   frontend:
     build:

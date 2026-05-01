@@ -15,7 +15,11 @@ def app(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/15")
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setenv("DEEPSEEK_BASE_URL", "https://api.deepseek.test")
+    monkeypatch.setenv("OOREP_SIDECAR_URL", "http://oorep-sidecar.test")
+    monkeypatch.setenv("AI_RECENT_CONSULTATION_LIMIT", "5")
+    monkeypatch.setenv("AI_SUMMARY_ON_SAVE", "false")
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-with-32-plus-chars")
 
     flask_app = create_app()

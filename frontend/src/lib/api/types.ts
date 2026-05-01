@@ -7,6 +7,7 @@ export interface Patient {
   phone: string;
   email: string;
   history: string;
+  aiSummary: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -54,15 +55,36 @@ export interface Remedy {
   rank: "PRIMARY" | "ALTERNATIVE" | "DIFFERENTIAL" | string;
   remedy: string;
   matchPercentage?: number;
+  evidenceScore?: {
+    rubricCount: number;
+    cumulativeWeight: number;
+    maxPossibleWeight: number;
+    percentage: number;
+    quality: "strong" | "moderate" | "weak" | "insufficient" | string;
+  };
   reasoning: string;
   dosage: string;
   followUp: string;
+  evidence?: Array<{
+    source?: string;
+    type?: string;
+    text?: string;
+  }>;
 }
 
 export interface AnalysisResult {
   issues: string;
   differentiationLogic: string;
   remedies: Remedy[];
+  evidenceQuality?: "strong" | "moderate" | "weak" | "insufficient" | string;
+  _meta?: {
+    retrieval?: {
+      queryCount?: number;
+      rubricCount?: number;
+      candidateCount?: number;
+      elapsedMs?: number;
+    };
+  };
 }
 
 export interface DashboardData {

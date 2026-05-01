@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -146,7 +147,7 @@ export function ConsultationPage() {
     }
     setIsProcessing(true);
     try {
-      const result = await api.suggestRemedies(extractedSymptoms, consultationsQuery.data || []);
+      const result = await api.suggestRemedies(extractedSymptoms, selectedPatient, consultationsQuery.data || []);
       setAnalysisResult(result);
       toast.success("Repertorization complete");
     } catch (error) {
@@ -273,10 +274,13 @@ export function ConsultationPage() {
           <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4">
             <Card className="border-slate-200 shadow-sm">
               <CardHeader className="border-b border-slate-100 bg-white">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Activity className="text-teal-600" />
-                  Case Analysis & Diagnosis
-                </CardTitle>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Activity className="text-teal-600" />
+                    Case Analysis & Diagnosis
+                  </CardTitle>
+                  {analysisResult.evidenceQuality ? <EvidenceQualityBadge quality={analysisResult.evidenceQuality} /> : null}
+                </div>
               </CardHeader>
               <CardContent className="p-6">
                 <p className="whitespace-pre-wrap text-slate-700">{analysisResult.issues}</p>
@@ -318,6 +322,15 @@ export function ConsultationPage() {
                           {remedy.matchPercentage ? <span className="text-sm font-bold text-slate-500">{remedy.matchPercentage}% Match</span> : null}
                         </div>
                         <h3 className="mt-2 text-xl font-bold text-slate-900">{remedy.remedy}</h3>
+                        {remedy.evidenceScore ? (
+                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            <EvidenceQualityBadge quality={remedy.evidenceScore.quality} compact />
+                            <span>
+                              {remedy.evidenceScore.rubricCount} rubrics, weight {remedy.evidenceScore.cumulativeWeight}/
+                              {remedy.evidenceScore.maxPossibleWeight}
+                            </span>
+                          </div>
+                        ) : null}
                       </div>
                       <div className="mb-6 flex flex-1 flex-col gap-4">
                         <Field label="Reasoning" value={remedy.reasoning} />
@@ -371,6 +384,28 @@ function Field({ label, value, strong = false }: { label: string; value: string;
       <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
       <p className={cn("mt-1 text-sm leading-relaxed", strong ? "font-medium text-slate-900" : "text-slate-700")}>{value}</p>
     </div>
+  );
+}
+
+function EvidenceQualityBadge({ quality, compact = false }: { quality: string; compact?: boolean }) {
+  const normalized = quality.toLowerCase();
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "capitalize",
+        compact ? "px-2 py-0.5 text-[11px]" : "px-3 py-1 text-xs",
+        normalized === "strong"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : normalized === "moderate"
+            ? "border-amber-200 bg-amber-50 text-amber-700"
+            : normalized === "weak"
+              ? "border-orange-200 bg-orange-50 text-orange-700"
+              : "border-slate-200 bg-slate-50 text-slate-600",
+      )}
+    >
+      Evidence: {quality}
+    </Badge>
   );
 }
 

@@ -48,6 +48,7 @@ def create_patient():
         phone=str(payload.get("phone") or ""),
         email=str(payload.get("email") or ""),
         history=str(payload.get("history") or ""),
+        ai_summary=str(payload.get("aiSummary") or ""),
     )
     db.session.add(patient)
     db.session.commit()
@@ -71,7 +72,9 @@ def update_patient(patient_id: str):
         raise ApiError("Patient not found.", status_code=404, code="not_found")
 
     payload = _patient_payload()
-    for field in ("name", "age", "gender", "phone", "email", "history"):
+    if "aiSummary" in payload:
+        payload["ai_summary"] = str(payload.get("aiSummary") or "")
+    for field in ("name", "age", "gender", "phone", "email", "history", "ai_summary"):
         if field in payload:
             setattr(patient, field, payload[field])
     if not patient.name:

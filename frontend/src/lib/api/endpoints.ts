@@ -46,10 +46,10 @@ export const api = {
 
   extractSymptoms: (text: string) =>
     apiRequest<{ text: string }>("/ai/extract-symptoms", { method: "POST", body: jsonBody({ text }) }),
-  suggestRemedies: (symptoms: string, pastConsultations: Consultation[]) =>
+  suggestRemedies: (symptoms: string, patientId: string, pastConsultations: Consultation[]) =>
     apiRequest<AnalysisResult>("/ai/suggest-remedies", {
       method: "POST",
-      body: jsonBody({ symptoms, pastConsultations }),
+      body: jsonBody({ symptoms, patientId, pastConsultations }),
     }),
   searchMateriaMedica: (query: string) =>
     apiRequest<{ text: string }>("/ai/materia-medica", { method: "POST", body: jsonBody({ query }) }),

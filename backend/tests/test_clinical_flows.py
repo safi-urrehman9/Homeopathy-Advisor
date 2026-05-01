@@ -89,3 +89,29 @@ def test_appointment_window_filter_and_delete(client, auth_headers):
 
     delete_response = client.delete(f"/api/v1/appointments/{first['id']}", headers=auth_headers)
     assert delete_response.status_code == 204
+
+
+def test_create_consultation_updates_compact_ai_summary(app, client, auth_headers, monkeypatch):
+    class FakeAiAdvisor:
+        def summarize_patient_history(self, current_summary, latest_consultation):
+            assert current_summary == "Initial constitutional summary"
+            assert latest_consultation["symptoms"] == "Insomnia worse after midnight"
+            return "Updated compact summary"
+
+    monkeypatch.setattr("app.api.v1.consultations.get_ai_advisor_service", lambda: FakeAiAdvisor())
+    app.config["AI_SUMMARY_ON_SAVE"] = True
+    patient = client.post(
+        "/api/v1/patients",
+        json={"name": "Mina", "aiSummary": "Initial constitutional summary"},
+        headers=auth_headers,
+    ).get_json()["data"]
+
+    response = client.post(
+        "/api/v1/consultations",
+        json={"patientId": patient["id"], "symptoms": "Insomnia worse after midnight"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 201
+    patient_response = client.get(f"/api/v1/patients/{patient['id']}", headers=auth_headers)
+    assert patient_response.get_json()["data"]["aiSummary"] == "Updated compact summary"

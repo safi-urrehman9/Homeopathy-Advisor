@@ -65,6 +65,7 @@ class Patient(db.Model):
     phone: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     history: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ai_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
@@ -84,6 +85,7 @@ class Patient(db.Model):
             "phone": self.phone or "",
             "email": self.email or "",
             "history": self.history or "",
+            "aiSummary": self.ai_summary or "",
             "createdAt": isoformat(self.created_at),
             "updatedAt": isoformat(self.updated_at),
         }

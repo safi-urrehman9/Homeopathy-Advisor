@@ -3,13 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, BookOpen, Calendar, LogOut, Menu, PlusCircle, Users, X } from "lucide-react";
+import { Activity, BookOpen, Calendar, CheckCircle2, LogOut, Menu, PlusCircle, ShieldCheck, Users, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showError } from "@/hooks/use-toast-error";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -56,88 +55,138 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
+    const isRegistering = authMode === "register";
+
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <div className="w-full max-w-md rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-full bg-teal-100 text-teal-600">
-            <Activity />
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.16),_transparent_32rem),linear-gradient(135deg,_#f8fafc_0%,_#eef7f6_48%,_#f8fafc_100%)] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
+        <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1fr_440px]">
+          <section className="hidden max-w-2xl lg:block">
+            <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-teal-200 bg-white/70 px-4 py-2 text-sm font-semibold text-teal-800 shadow-sm shadow-teal-900/5 backdrop-blur">
+              <Activity className="size-4" />
+              VitalForce AI
+            </div>
+            <h1 className="max-w-xl text-5xl font-semibold leading-tight tracking-tight text-slate-950">
+              A calmer clinical workspace for homeopathic practice.
+            </h1>
+            <p className="mt-5 max-w-lg text-lg leading-8 text-slate-600">
+              Sign in to manage patients, consultations, appointments, and AI-assisted remedy workflows from one focused dashboard.
+            </p>
+            <div className="mt-10 grid max-w-xl grid-cols-2 gap-4">
+              {[
+                "Backend-managed doctor sessions",
+                "Patient records and visit history",
+                "AI consultation capture",
+                "Calendar-aware clinic flow",
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-3 rounded-xl border border-white/70 bg-white/65 p-4 shadow-sm shadow-slate-900/5 backdrop-blur">
+                  <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-teal-600" />
+                  <span className="text-sm font-medium leading-6 text-slate-700">{item}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <div className="w-full">
+            <div className="mx-auto w-full max-w-[440px] rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-2xl shadow-slate-900/10 backdrop-blur sm:p-8">
+              <div className="mb-8 text-center">
+                <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+                  <Activity className="size-7" />
+                </div>
+                <h2 className="text-3xl font-semibold tracking-tight text-slate-950">VitalForce AI</h2>
+                <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">
+                  Secure access for doctors managing clinical work.
+                </p>
+              </div>
+
+              <div className="mb-6 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("login")}
+                  className={cn(
+                    "h-10 rounded-lg text-sm font-semibold transition-all",
+                    !isRegistering ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800",
+                  )}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("register")}
+                  className={cn(
+                    "h-10 rounded-lg text-sm font-semibold transition-all",
+                    isRegistering ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800",
+                  )}
+                >
+                  Create Account
+                </button>
+              </div>
+
+              <form className="space-y-5" onSubmit={handleAuthSubmit}>
+                {isRegistering ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="auth-name" className="text-sm font-semibold text-slate-800">
+                      Full Name
+                    </Label>
+                    <Input
+                      id="auth-name"
+                      value={authForm.name}
+                      onChange={(event) => setAuthForm((current) => ({ ...current, name: event.target.value }))}
+                      placeholder="Dr. Aisha Khan"
+                      autoComplete="name"
+                      className="h-11 rounded-xl border-slate-200 bg-white px-3 text-base shadow-sm placeholder:text-slate-400 focus-visible:border-teal-600 focus-visible:ring-teal-600/15 md:text-sm"
+                    />
+                  </div>
+                ) : null}
+
+                <div className="space-y-2">
+                  <Label htmlFor="auth-email" className="text-sm font-semibold text-slate-800">
+                    Email
+                  </Label>
+                  <Input
+                    id="auth-email"
+                    type="email"
+                    value={authForm.email}
+                    onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="doctor@example.com"
+                    autoComplete="email"
+                    className="h-11 rounded-xl border-slate-200 bg-white px-3 text-base shadow-sm placeholder:text-slate-400 focus-visible:border-teal-600 focus-visible:ring-teal-600/15 md:text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="auth-password" className="text-sm font-semibold text-slate-800">
+                    Password
+                  </Label>
+                  <Input
+                    id="auth-password"
+                    type="password"
+                    value={authForm.password}
+                    onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder={isRegistering ? "Minimum 8 characters" : "Enter your password"}
+                    autoComplete={isRegistering ? "new-password" : "current-password"}
+                    className="h-11 rounded-xl border-slate-200 bg-white px-3 text-base shadow-sm placeholder:text-slate-400 focus-visible:border-teal-600 focus-visible:ring-teal-600/15 md:text-sm"
+                  />
+                </div>
+
+                <Button
+                  className="h-11 w-full rounded-xl bg-teal-700 text-base font-semibold text-white shadow-lg shadow-teal-900/15 hover:bg-teal-800 md:text-sm"
+                  disabled={isSubmittingAuth}
+                  type="submit"
+                >
+                  {isSubmittingAuth ? (isRegistering ? "Creating Account..." : "Signing In...") : isRegistering ? "Create Account" : "Sign In"}
+                </Button>
+              </form>
+
+              <div className="mt-6 flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
+                <ShieldCheck className="size-4 text-teal-700" />
+                Protected by encrypted token authentication
+              </div>
+            </div>
+
+            <p className="mt-6 text-center text-xs text-slate-500 lg:hidden">
+              Patient records, consultations, appointments, and AI-assisted workflows in one clinical workspace.
+            </p>
           </div>
-          <h1 className="mb-2 text-2xl font-bold text-slate-900">VitalForce AI</h1>
-          <p className="mb-8 text-slate-500">Secure doctor access with backend-managed authentication.</p>
-          <Tabs value={authMode} onValueChange={setAuthMode} className="gap-4 text-left">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Sign In</TabsTrigger>
-              <TabsTrigger value="register">Create Account</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login">
-              <form className="space-y-4" onSubmit={handleAuthSubmit}>
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    value={authForm.email}
-                    onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))}
-                    placeholder="doctor@example.com"
-                    autoComplete="email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    value={authForm.password}
-                    onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                  />
-                </div>
-                <Button className="w-full bg-teal-600 text-white hover:bg-teal-700" disabled={isSubmittingAuth} type="submit">
-                  {isSubmittingAuth ? "Signing In..." : "Sign In"}
-                </Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="register">
-              <form className="space-y-4" onSubmit={handleAuthSubmit}>
-                <div className="space-y-2">
-                  <Label htmlFor="register-name">Full Name</Label>
-                  <Input
-                    id="register-name"
-                    value={authForm.name}
-                    onChange={(event) => setAuthForm((current) => ({ ...current, name: event.target.value }))}
-                    placeholder="Dr. Aisha Khan"
-                    autoComplete="name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
-                  <Input
-                    id="register-email"
-                    type="email"
-                    value={authForm.email}
-                    onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))}
-                    placeholder="doctor@example.com"
-                    autoComplete="email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Password</Label>
-                  <Input
-                    id="register-password"
-                    type="password"
-                    value={authForm.password}
-                    onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
-                    placeholder="Minimum 8 characters"
-                    autoComplete="new-password"
-                  />
-                </div>
-                <Button className="w-full bg-teal-600 text-white hover:bg-teal-700" disabled={isSubmittingAuth} type="submit">
-                  {isSubmittingAuth ? "Creating Account..." : "Create Account"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
         </div>
       </div>
     );

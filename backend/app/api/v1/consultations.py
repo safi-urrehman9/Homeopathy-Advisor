@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from flask import Blueprint, request
+from flask import Blueprint, current_app, request
 
 from app.api.v1.auth import current_doctor_id, require_auth
 from app.extensions import db
 from app.models import Consultation
 from app.repositories.clinical import get_patient_for_doctor, list_consultations_for_patient
+from app.services.ai_advisor_service import get_ai_advisor_service
 from app.utils.dates import parse_datetime
 from app.utils.errors import ApiError, ValidationError, success
 
@@ -55,5 +56,14 @@ def create_consultation():
         **consultation_kwargs
     )
     db.session.add(consultation)
+    db.session.flush()
+    if current_app.config["AI_SUMMARY_ON_SAVE"]:
+        try:
+            patient.ai_summary = get_ai_advisor_service().summarize_patient_history(
+                patient.ai_summary or "",
+                consultation.to_dict(),
+            )
+        except ApiError:
+            pass
     db.session.commit()
     return success(consultation.to_dict(), status_code=201)

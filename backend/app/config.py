@@ -20,10 +20,15 @@ class Config:
     CACHE_VERSION = os.getenv("CACHE_VERSION", "v1")
     JWT_EXPIRES_IN_SECONDS = int(os.getenv("JWT_EXPIRES_IN_SECONDS", str(60 * 60 * 24 * 7)))
 
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-3-flash-preview")
-    GEMINI_IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image-preview")
-    GEMINI_AUDIO_MODEL = os.getenv("GEMINI_AUDIO_MODEL", "gemini-3.1-flash-live-preview")
+    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+    DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    DEEPSEEK_FAST_MODEL = os.getenv("DEEPSEEK_FAST_MODEL", "deepseek-v4-flash")
+    DEEPSEEK_REASONING_MODEL = os.getenv("DEEPSEEK_REASONING_MODEL", "deepseek-v4-pro")
+    DEEPSEEK_TIMEOUT_SECONDS = int(os.getenv("DEEPSEEK_TIMEOUT_SECONDS", "60"))
+    OOREP_SIDECAR_URL = os.getenv("OOREP_SIDECAR_URL", "http://oorep-sidecar:5055")
+    OOREP_TIMEOUT_SECONDS = int(os.getenv("OOREP_TIMEOUT_SECONDS", "30"))
+    AI_RECENT_CONSULTATION_LIMIT = int(os.getenv("AI_RECENT_CONSULTATION_LIMIT", "5"))
+    AI_SUMMARY_ON_SAVE = os.getenv("AI_SUMMARY_ON_SAVE", "true").lower() == "true"
 
     CORS_ORIGINS = [
         origin.strip()
