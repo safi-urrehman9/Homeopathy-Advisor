@@ -11,6 +11,20 @@ export interface Patient {
   updatedAt: string;
 }
 
+export interface DoctorSession {
+  id: string;
+  email: string;
+  name: string;
+  photoUrl: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthSession {
+  token: string;
+  doctor: DoctorSession;
+}
+
 export interface Consultation {
   id: string;
   doctorId: string;

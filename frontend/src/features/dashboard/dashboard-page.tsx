@@ -35,7 +35,7 @@ export function DashboardPage() {
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-              Good morning, Dr. {user?.displayName?.split(" ")[0] || "Doctor"}
+              Good morning, Dr. {user?.name?.split(" ")[0] || "Doctor"}
             </h1>
             <p className="mt-1 text-slate-500">Here&apos;s what&apos;s happening today.</p>
           </div>

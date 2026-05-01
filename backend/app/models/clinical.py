@@ -29,9 +29,10 @@ def isoformat(value: datetime | None) -> str | None:
 class Doctor(db.Model):
     __tablename__ = "doctors"
 
-    id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     photo_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
@@ -41,6 +42,16 @@ class Doctor(db.Model):
     patients: Mapped[List["Patient"]] = relationship(back_populates="doctor", cascade="all, delete-orphan")
     consultations: Mapped[List["Consultation"]] = relationship(back_populates="doctor", cascade="all, delete-orphan")
     appointments: Mapped[List["Appointment"]] = relationship(back_populates="doctor", cascade="all, delete-orphan")
+
+    def to_auth_dict(self) -> dict[str, object]:
+        return {
+            "id": self.id,
+            "email": self.email,
+            "name": self.name,
+            "photoUrl": self.photo_url or "",
+            "createdAt": isoformat(self.created_at),
+            "updatedAt": isoformat(self.updated_at),
+        }
 
 
 class Patient(db.Model):

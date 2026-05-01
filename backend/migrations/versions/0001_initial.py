@@ -17,18 +17,20 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "doctors",
-        sa.Column("id", sa.String(length=128), nullable=False),
-        sa.Column("email", sa.String(length=255), nullable=True),
-        sa.Column("name", sa.String(length=255), nullable=True),
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("email", sa.String(length=255), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("password_hash", sa.String(length=255), nullable=False),
         sa.Column("photo_url", sa.String(length=1024), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.UniqueConstraint("email"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
         "patients",
         sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("doctor_id", sa.String(length=128), nullable=False),
+        sa.Column("doctor_id", sa.String(length=36), nullable=False),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("age", sa.Integer(), nullable=True),
         sa.Column("gender", sa.String(length=64), nullable=True),
@@ -44,7 +46,7 @@ def upgrade() -> None:
     op.create_table(
         "appointments",
         sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("doctor_id", sa.String(length=128), nullable=False),
+        sa.Column("doctor_id", sa.String(length=36), nullable=False),
         sa.Column("patient_id", sa.String(length=36), nullable=False),
         sa.Column("patient_name", sa.String(length=255), nullable=False),
         sa.Column("date", sa.DateTime(timezone=True), nullable=False),
@@ -61,7 +63,7 @@ def upgrade() -> None:
     op.create_table(
         "consultations",
         sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("doctor_id", sa.String(length=128), nullable=False),
+        sa.Column("doctor_id", sa.String(length=36), nullable=False),
         sa.Column("patient_id", sa.String(length=36), nullable=False),
         sa.Column("date", sa.DateTime(timezone=True), nullable=False),
         sa.Column("symptoms", sa.Text(), nullable=False),

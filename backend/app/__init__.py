@@ -16,10 +16,11 @@ def create_app(config_object: type[Config] | None = None) -> Flask:
     app = Flask(__name__)
     app.config.from_object(config_object or Config)
     app.config.update(
+        SECRET_KEY=os.getenv("SECRET_KEY", app.config["SECRET_KEY"]),
         SQLALCHEMY_DATABASE_URI=os.getenv("DATABASE_URL", app.config["SQLALCHEMY_DATABASE_URI"]),
         REDIS_URL=os.getenv("REDIS_URL", app.config["REDIS_URL"]),
         GEMINI_API_KEY=os.getenv("GEMINI_API_KEY", app.config["GEMINI_API_KEY"]),
-        FIREBASE_PROJECT_ID=os.getenv("FIREBASE_PROJECT_ID", app.config["FIREBASE_PROJECT_ID"]),
+        JWT_EXPIRES_IN_SECONDS=int(os.getenv("JWT_EXPIRES_IN_SECONDS", str(app.config["JWT_EXPIRES_IN_SECONDS"]))),
     )
 
     database_uri = app.config["SQLALCHEMY_DATABASE_URI"]

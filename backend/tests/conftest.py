@@ -2,10 +2,12 @@ import os
 from collections.abc import Iterator
 
 import pytest
+from werkzeug.security import generate_password_hash
 
 from app import create_app
 from app.extensions import db
 from app.models import Doctor
+from app.services.auth_service import create_access_token
 
 
 @pytest.fixture()
@@ -14,7 +16,7 @@ def app(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/15")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    monkeypatch.setenv("FIREBASE_PROJECT_ID", "test-project")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key-with-32-plus-chars")
 
     flask_app = create_app()
     flask_app.config.update(TESTING=True)
@@ -32,30 +34,39 @@ def client(app):
 
 
 @pytest.fixture(autouse=True)
-def fake_firebase(monkeypatch: pytest.MonkeyPatch):
-    def _verify(token: str) -> dict[str, object]:
-        if token == "doctor-two":
-            return {
-                "uid": "doctor-two",
-                "email": "two@example.com",
-                "name": "Dr Two",
-                "picture": "",
-            }
-        return {
-            "uid": "doctor-one",
-            "email": "one@example.com",
-            "name": "Dr One",
-            "picture": "",
-        }
-
-    monkeypatch.setattr("app.services.auth_service.verify_firebase_token", _verify)
+def seed_doctors(app):
+    with app.app_context():
+        db.session.add_all(
+            [
+                Doctor(
+                    id="doctor-one",
+                    email="one@example.com",
+                    name="Dr One",
+                    password_hash=generate_password_hash("password123", method="pbkdf2:sha256"),
+                ),
+                Doctor(
+                    id="doctor-two",
+                    email="two@example.com",
+                    name="Dr Two",
+                    password_hash=generate_password_hash("password123", method="pbkdf2:sha256"),
+                ),
+            ]
+        )
+        db.session.commit()
+        yield
+        db.session.query(Doctor).delete()
+        db.session.commit()
 
 
 @pytest.fixture()
-def auth_headers() -> dict[str, str]:
-    return {"Authorization": "Bearer doctor-one"}
+def auth_headers(app) -> dict[str, str]:
+    with app.app_context():
+        doctor = db.session.get(Doctor, "doctor-one")
+        return {"Authorization": f"Bearer {create_access_token(doctor)}"}
 
 
 @pytest.fixture()
-def other_auth_headers() -> dict[str, str]:
-    return {"Authorization": "Bearer doctor-two"}
+def other_auth_headers(app) -> dict[str, str]:
+    with app.app_context():
+        doctor = db.session.get(Doctor, "doctor-two")
+        return {"Authorization": f"Bearer {create_access_token(doctor)}"}

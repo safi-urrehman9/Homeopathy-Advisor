@@ -7,6 +7,10 @@ import { Activity, BookOpen, Calendar, LogOut, Menu, PlusCircle, Users, X } from
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { showError } from "@/hooks/use-toast-error";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +24,28 @@ const navItems = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isReady, login, logout } = useAuth();
+  const { user, isReady, login, logout, register } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
+  const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
+  const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
+
+  const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmittingAuth(true);
+
+    try {
+      if (authMode === "register") {
+        await register(authForm);
+      } else {
+        await login({ email: authForm.email, password: authForm.password });
+      }
+    } catch (error) {
+      showError(error, authMode === "register" ? "Account creation failed" : "Sign in failed");
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
 
   if (!isReady) {
     return (
@@ -39,10 +63,81 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Activity />
           </div>
           <h1 className="mb-2 text-2xl font-bold text-slate-900">VitalForce AI</h1>
-          <p className="mb-8 text-slate-500">Your intelligent homeopathic advisor and practice management system.</p>
-          <Button className="w-full bg-teal-600 text-white hover:bg-teal-700" onClick={login}>
-            Sign in with Google
-          </Button>
+          <p className="mb-8 text-slate-500">Secure doctor access with backend-managed authentication.</p>
+          <Tabs value={authMode} onValueChange={setAuthMode} className="gap-4 text-left">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Sign In</TabsTrigger>
+              <TabsTrigger value="register">Create Account</TabsTrigger>
+            </TabsList>
+            <TabsContent value="login">
+              <form className="space-y-4" onSubmit={handleAuthSubmit}>
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">Email</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    value={authForm.email}
+                    onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="doctor@example.com"
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Password</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    value={authForm.password}
+                    onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                  />
+                </div>
+                <Button className="w-full bg-teal-600 text-white hover:bg-teal-700" disabled={isSubmittingAuth} type="submit">
+                  {isSubmittingAuth ? "Signing In..." : "Sign In"}
+                </Button>
+              </form>
+            </TabsContent>
+            <TabsContent value="register">
+              <form className="space-y-4" onSubmit={handleAuthSubmit}>
+                <div className="space-y-2">
+                  <Label htmlFor="register-name">Full Name</Label>
+                  <Input
+                    id="register-name"
+                    value={authForm.name}
+                    onChange={(event) => setAuthForm((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Dr. Aisha Khan"
+                    autoComplete="name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-email">Email</Label>
+                  <Input
+                    id="register-email"
+                    type="email"
+                    value={authForm.email}
+                    onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="doctor@example.com"
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">Password</Label>
+                  <Input
+                    id="register-password"
+                    type="password"
+                    value={authForm.password}
+                    onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder="Minimum 8 characters"
+                    autoComplete="new-password"
+                  />
+                </div>
+                <Button className="w-full bg-teal-600 text-white hover:bg-teal-700" disabled={isSubmittingAuth} type="submit">
+                  {isSubmittingAuth ? "Creating Account..." : "Create Account"}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     );
@@ -106,7 +201,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="border-t border-slate-100 p-4">
           <div className="mb-2 flex items-center gap-3 px-3 py-2">
             <Image
-              src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.email || "Doctor")}`}
+              src={user.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.email || "Doctor")}`}
               alt="User"
               width={32}
               height={32}
@@ -114,7 +209,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               unoptimized
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-slate-900">{user.displayName || "Doctor"}</p>
+              <p className="truncate text-sm font-medium text-slate-900">{user.name || "Doctor"}</p>
               <p className="truncate text-xs text-slate-500">{user.email}</p>
             </div>
           </div>
