@@ -1,0 +1,10 @@
+.git
+node_modules
+frontend/node_modules
+frontend/.next
+backend/instance
+__pycache__
+.pytest_cache
+*.log
+.env
+PRD.md

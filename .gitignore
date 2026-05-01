@@ -2,6 +2,12 @@ node_modules/
 build/
 dist/
 coverage/
+.next/
+frontend/.next/
+*.tsbuildinfo
+backend/instance/
+__pycache__/
+.pytest_cache/
 .DS_Store
 *.log
 .env*

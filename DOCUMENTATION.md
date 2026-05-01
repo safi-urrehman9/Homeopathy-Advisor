@@ -1,55 +1,37 @@
-# VitalForce AI - Documentation
+# VitalForce AI - Technical Documentation
 
 ## Overview
-VitalForce AI is a comprehensive homeopathic advisor application designed for doctors. It leverages AI (Google Gemini) to assist in case taking, symptom extraction, repertorization, and remedy suggestions. It also includes patient management and appointment scheduling.
 
-## Core Functionalities
+VitalForce AI helps homeopathic doctors manage patients, schedule appointments, capture consultations, and use Gemini-powered assistance for symptom extraction, repertorization, and Materia Medica search.
 
-### 1. Dashboard
-- **Overview**: Provides a quick glance at the day's schedule and recent patients.
-- **Quick Actions**: Start a new consultation directly from the dashboard.
-- **Materia Medica Search**: A quick search bar to look up remedies and rubrics using the Gemini AI.
+## Architecture
 
-### 2. Patient Management
-- **Patient List**: View all registered patients with their basic details.
-- **Add Patient**: Register new patients with their age, gender, contact info, and initial medical history.
-- **Patient Details & History**: Click "Details" on any patient to view their complete profile, including a chronological timeline of all past consultations, symptoms recorded, diagnosis, and prescribed remedies.
-- **Follow-up**: A quick action button to start a new consultation with the patient pre-selected.
+- **Frontend:** Next.js App Router, React 19, Tailwind CSS, shadcn/base-ui components, TanStack Query, Firebase Auth.
+- **Backend:** Flask app factory, SQLAlchemy ORM, Alembic migrations, SQLite for the current RDBMS.
+- **Caching:** Redis caches Gemini-heavy AI responses by normalized payload hash and cache version.
+- **Authentication:** The frontend signs in with Firebase Google Auth. The backend verifies Firebase ID tokens and scopes all data by doctor ID.
 
-### 3. Case Taking (Consultation)
-- **Input Methods**:
-  - **Voice Dictation**: Record audio directly in the app. The AI transcribes and extracts symptoms.
-  - **Text Input**: Type symptoms manually.
-  - **Image/Report Upload**: Upload lab reports or images of physical symptoms for AI analysis.
-- **Symptom Extraction**: The Gemini AI processes the input and generates a clean, medically professional list of symptoms/rubrics.
-- **Context-Aware Repertorization**: When "Repertorize" is clicked, the AI analyzes the current symptoms. **Crucially, it also analyzes the patient's entire past consultation history (in chronological order)** to understand the timeline, progression of the case, and previous remedies.
-- **AI Output**:
-  - **Case Analysis & Diagnosis**: A summary of the patient's current issues.
-  - **Suggested Remedies**: Top 3 remedies with detailed reasoning (referencing past history if relevant).
-  - **Dosage**: Suggested potency and frequency.
-  - **Follow-up**: Recommendation on when to check in next.
-- **Save Consultation**: Prescribe a remedy and save the entire consultation record to the patient's history.
+## Backend Modules
 
-### 4. Calendar & Appointments
-- **Scheduling**: Schedule new appointments for patients.
-- **Daily View**: View all appointments for a selected date.
+- `app/api/v1` exposes JSON endpoints for health, dashboard, patients, consultations, appointments, and AI.
+- `app/models` contains relational doctor, patient, consultation, and appointment models.
+- `app/repositories` centralizes scoped SQLAlchemy query helpers.
+- `app/services` owns Firebase token verification, Gemini calls, and Redis cache access.
+- `migrations/` contains the Alembic schema history.
 
-### 5. Materia Medica
-- **Semantic Search**: Ask complex questions about remedies, symptoms, or rubrics, and the AI will provide detailed answers based on homeopathic literature.
+## Frontend Modules
 
-## Technical Architecture
-- **Frontend**: React 19, Vite, Tailwind CSS, shadcn/ui components.
-- **Backend/Database**: Firebase Firestore (NoSQL database).
-- **Authentication**: Firebase Authentication (Google Sign-In).
-- **AI Integration**: `@google/genai` SDK using `gemini-3-flash-preview` for text/analysis, `gemini-3.1-flash-image-preview` for images, and `gemini-3.1-flash-live-preview` for audio processing.
+- `src/app` contains the Next.js route tree and providers.
+- `src/components` contains reusable app shell and UI primitives.
+- `src/features` contains feature-level pages for dashboard, patients, calendar, consultations, and Materia Medica.
+- `src/lib/api` contains typed API clients and DTOs.
+- `src/hooks` contains shared auth and error handling hooks.
 
-## Data Flow (Consultation)
-1. Doctor selects a patient.
-2. App fetches all past consultations for that patient from Firestore.
-3. Doctor inputs new symptoms (Voice/Text/Image).
-4. AI extracts clean symptoms.
-5. Doctor clicks Repertorize.
-6. App sends current symptoms + chronological past consultations to Gemini AI.
-7. AI returns structured JSON (Issues, Remedies, Reasoning, Dosage, Follow-up).
-8. Doctor reviews, selects a remedy, and saves.
-9. App writes the new consultation record to Firestore.
+## Data Flow
+
+1. The doctor signs in with Google through Firebase Auth.
+2. Next.js requests include a Firebase ID token in the `Authorization` header.
+3. Flask verifies the token, upserts the doctor, and scopes records to that doctor.
+4. SQLite stores patients, consultations, and appointments through SQLAlchemy.
+5. Redis caches Gemini responses for repeated AI requests.
+6. The frontend uses mutation-driven refetches and light polling instead of Firestore realtime listeners.

@@ -1,9 +1,0 @@
-{
-  "name": "VitalForce AI",
-  "description": "An intelligent homeopathic advisor and practice management system for doctors. Features audio dictation, AI repertorization, and patient management.",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ],
-  "majorCapabilities": []
-}
