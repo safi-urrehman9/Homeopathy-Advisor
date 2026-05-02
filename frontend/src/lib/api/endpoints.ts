@@ -1,7 +1,7 @@
 "use client";
 
 import { apiRequest, jsonBody } from "@/lib/api/client";
-import type { AnalysisResult, Appointment, AuthSession, Consultation, DashboardData, DoctorSession, Patient } from "@/lib/api/types";
+import type { AnalysisResult, Appointment, AuthSession, Consultation, DashboardData, DoctorSession, Patient, StatisticsData } from "@/lib/api/types";
 
 export const api = {
   login: (payload: { email: string; password: string }) =>
@@ -11,6 +11,7 @@ export const api = {
   me: () => apiRequest<DoctorSession>("/auth/me"),
 
   dashboard: () => apiRequest<DashboardData>("/dashboard"),
+  statistics: () => apiRequest<StatisticsData>("/statistics"),
 
   listPatients: (query?: string) => {
     const search = query ? `?q=${encodeURIComponent(query)}` : "";

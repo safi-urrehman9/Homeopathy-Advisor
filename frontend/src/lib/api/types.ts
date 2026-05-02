@@ -1,3 +1,12 @@
+export type PatientStatus = "active" | "improving" | "healed" | "inactive" | "relapsed";
+
+export interface PatientHistorySnapshotSummary {
+  id: string;
+  version: number;
+  eventType: string;
+  createdAt: string;
+}
+
 export interface Patient {
   id: string;
   doctorId: string;
@@ -8,6 +17,10 @@ export interface Patient {
   email: string;
   history: string;
   aiSummary: string;
+  status: PatientStatus;
+  statusUpdatedAt: string;
+  healedAt: string | null;
+  latestHistorySnapshot: PatientHistorySnapshotSummary | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -90,6 +103,17 @@ export interface AnalysisResult {
 export interface DashboardData {
   todayAppointments: Appointment[];
   recentPatients: Patient[];
+}
+
+export interface StatisticsData {
+  totalPatients: number;
+  statusCounts: Record<PatientStatus, number>;
+  healedCount: number;
+  healedPercentage: number;
+  recentConsultationCount: number;
+  topPrescribedRemedies: Array<{ name: string; count: number }>;
+  topPotencies: Array<{ name: string; count: number }>;
+  recentHealedPatients: Patient[];
 }
 
 export interface ApiEnvelope<T> {
