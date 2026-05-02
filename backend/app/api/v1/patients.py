@@ -18,7 +18,10 @@ def _patient_payload() -> dict[str, object]:
     if payload.get("age") in ("", None):
         payload["age"] = None
     elif "age" in payload:
-        payload["age"] = int(payload["age"])
+        try:
+            payload["age"] = int(payload["age"])
+        except (ValueError, TypeError):
+            raise ValidationError("Age must be a valid number.")
     return payload
 
 

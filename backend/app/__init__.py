@@ -5,6 +5,7 @@ from pathlib import Path
 
 from flask import Flask
 from flask_cors import CORS
+from dotenv import load_dotenv
 
 from app.api.v1 import api_v1
 from app.config import Config
@@ -13,6 +14,7 @@ from app.utils.errors import ApiError, ValidationError, register_error_handlers
 
 
 def create_app(config_object: type[Config] | None = None) -> Flask:
+    load_dotenv()
     app = Flask(__name__)
     app.config.from_object(config_object or Config)
     app.config.update(

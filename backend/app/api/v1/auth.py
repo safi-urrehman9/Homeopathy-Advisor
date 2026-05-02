@@ -32,11 +32,11 @@ def register():
     password = str(payload.get("password") or "")
 
     if not name:
-        raise ValidationError({"name": "Name is required."})
+        raise ValidationError("Name is required.")
     if not email:
-        raise ValidationError({"email": "Email is required."})
+        raise ValidationError("Email is required.")
     if len(password) < 8:
-        raise ValidationError({"password": "Password must be at least 8 characters."})
+        raise ValidationError("Password must be at least 8 characters.")
 
     doctor = register_doctor(name=name, email=email, password=password)
     return (
@@ -59,9 +59,9 @@ def login():
     password = str(payload.get("password") or "")
 
     if not email:
-        raise ValidationError({"email": "Email is required."})
+        raise ValidationError("Email is required.")
     if not password:
-        raise ValidationError({"password": "Password is required."})
+        raise ValidationError("Password is required.")
 
     doctor = authenticate_doctor(email=email, password=password)
     return jsonify({"data": {"token": create_access_token(doctor), "doctor": doctor.to_auth_dict()}})

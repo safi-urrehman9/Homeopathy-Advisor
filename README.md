@@ -10,7 +10,7 @@ VitalForce AI is a modular homeopathic advisor for doctors. The app is split int
 
 ## Run Locally
 
-1. Copy `.env.example` to `.env` and set `GEMINI_API_KEY`.
+1. Copy `.env.example` to `.env` and set `DEEPSEEK_API_KEY`.
 2. Set a strong `SECRET_KEY` for JWT signing.
 3. Start the stack:
 

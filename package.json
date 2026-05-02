@@ -7,10 +7,19 @@
   ],
   "scripts": {
     "dev": "docker compose up --build",
-    "dev:api": "python3 backend/wsgi.py",
+    "dev:all": "concurrently -n \"web,api,sidecar\" -c \"blue,green,magenta\" \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:sidecar\"",
+    "dev:api": "python backend/wsgi.py",
     "dev:web": "npm --workspace frontend run dev",
-    "test:backend": "python3 -m pytest backend/tests -q",
+    "dev:sidecar": "cd oorep-sidecar && npm start",
+    "setup:api": "python -m pip install -r backend/requirements.txt && python -c \"from backend.app import create_app; from backend.app.extensions import db; app = create_app(); with app.app_context(): db.create_all()\"",
+    "setup:sidecar": "cd oorep-sidecar && npm install",
+    "setup:web": "npm --workspace frontend install",
+    "setup:all": "npm install && npm run setup:web && npm run setup:api && npm run setup:sidecar",
+    "test:backend": "python -m pytest backend/tests -q",
     "lint:frontend": "npm --workspace frontend run lint",
     "build:frontend": "npm --workspace frontend run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
