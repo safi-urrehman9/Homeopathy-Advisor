@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, BookOpen, Calendar, CheckCircle2, LogOut, Menu, PlusCircle, ShieldCheck, Users, X } from "lucide-react";
+import { Activity, BarChart3, BookOpen, Calendar, CheckCircle2, LogOut, Menu, PlusCircle, ShieldCheck, Users, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", icon: Activity, label: "Dashboard" },
+  { href: "/statistics", icon: BarChart3, label: "Statistics" },
   { href: "/patients", icon: Users, label: "Patients" },
   { href: "/calendar", icon: Calendar, label: "Calendar" },
   { href: "/materia-medica", icon: BookOpen, label: "Materia Medica" },
@@ -248,7 +249,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
         <div className="border-t border-slate-100 p-4">
-          <div className="mb-2 flex items-center gap-3 px-3 py-2">
+          <Link
+            href="/profile"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className={cn(
+              "mb-2 flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-slate-50",
+              pathname === "/profile" ? "bg-teal-50 text-teal-700" : "text-slate-700",
+            )}
+          >
             <Image
               src={user.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.email || "Doctor")}`}
               alt="User"
@@ -261,7 +269,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="truncate text-sm font-medium text-slate-900">{user.name || "Doctor"}</p>
               <p className="truncate text-xs text-slate-500">{user.email}</p>
             </div>
-          </div>
+          </Link>
           <button
             onClick={logout}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"

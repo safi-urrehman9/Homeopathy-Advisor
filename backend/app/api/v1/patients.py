@@ -5,7 +5,8 @@ from flask import Blueprint, request
 from app.api.v1.auth import current_doctor_id, require_auth
 from app.extensions import db
 from app.models import Patient
-from app.repositories.clinical import get_patient_for_doctor, list_consultations_for_patient, list_patients_for_doctor
+from app.models.clinical import PATIENT_STATUSES, utc_now
+from app.repositories.clinical import append_patient_history_snapshot, get_patient_for_doctor, list_consultations_for_patient, list_patients_for_doctor
 from app.utils.errors import ApiError, ValidationError, no_content, success
 
 bp = Blueprint("patients", __name__)
@@ -77,11 +78,34 @@ def update_patient(patient_id: str):
     payload = _patient_payload()
     if "aiSummary" in payload:
         payload["ai_summary"] = str(payload.get("aiSummary") or "")
+
+    previous_status = patient.status
+    status_changed = False
+    non_status_update = False
+    if "status" in payload:
+        next_status = str(payload.get("status") or "").strip()
+        if next_status not in PATIENT_STATUSES:
+            raise ValidationError("Patient status is invalid.")
+        status_changed = next_status != previous_status
+        if status_changed:
+            patient.status = next_status
+            patient.status_updated_at = utc_now()
+            patient.healed_at = utc_now() if next_status == "healed" else None
+
     for field in ("name", "age", "gender", "phone", "email", "history", "ai_summary"):
         if field in payload:
             setattr(patient, field, payload[field])
+            non_status_update = True
     if not patient.name:
         raise ValidationError("Patient name is required.")
+
+    if status_changed and patient.status == "healed":
+        append_patient_history_snapshot(patient, "marked_healed")
+    elif previous_status == "healed" and status_changed:
+        append_patient_history_snapshot(patient, "status_changed")
+    elif previous_status == "healed" and non_status_update:
+        append_patient_history_snapshot(patient, "healed_patient_updated")
+
     db.session.commit()
     return success(patient.to_dict())
 

@@ -7,6 +7,7 @@ from app.api.v1.consultations import bp as consultations_bp
 from app.api.v1.dashboard import bp as dashboard_bp
 from app.api.v1.health import bp as health_bp
 from app.api.v1.patients import bp as patients_bp
+from app.api.v1.statistics import bp as statistics_bp
 
 
 api_v1 = Blueprint("api_v1", __name__)
@@ -16,4 +17,5 @@ api_v1.register_blueprint(patients_bp)
 api_v1.register_blueprint(consultations_bp)
 api_v1.register_blueprint(appointments_bp)
 api_v1.register_blueprint(dashboard_bp)
+api_v1.register_blueprint(statistics_bp)
 api_v1.register_blueprint(ai_bp)

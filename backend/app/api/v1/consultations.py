@@ -5,7 +5,7 @@ from flask import Blueprint, current_app, request
 from app.api.v1.auth import current_doctor_id, require_auth
 from app.extensions import db
 from app.models import Consultation
-from app.repositories.clinical import get_patient_for_doctor, list_consultations_for_patient
+from app.repositories.clinical import append_patient_history_snapshot, get_patient_for_doctor, list_consultations_for_patient
 from app.services.ai_advisor_service import get_ai_advisor_service
 from app.utils.dates import parse_datetime
 from app.utils.errors import ApiError, ValidationError, success
@@ -65,5 +65,7 @@ def create_consultation():
             )
         except ApiError:
             pass
+    if patient.status == "healed":
+        append_patient_history_snapshot(patient, "healed_consultation_added")
     db.session.commit()
     return success(consultation.to_dict(), status_code=201)

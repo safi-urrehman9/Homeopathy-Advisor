@@ -38,7 +38,7 @@ class DeepSeekClient:
             "model": model,
             "messages": message_payload,
             "stream": False,
-            "temperature": 0.2,
+            "temperature": 0,
             "thinking": {"type": "disabled"},
         }
         content = self._chat(payload)
@@ -53,7 +53,7 @@ class DeepSeekClient:
             "model": model,
             "messages": message_payload,
             "stream": False,
-            "temperature": 0.1,
+            "temperature": 0,
             "response_format": {"type": "json_object"},
         }
         content = self._chat(payload)

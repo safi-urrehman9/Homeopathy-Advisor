@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,9 +16,24 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { showError } from "@/hooks/use-toast-error";
 import { api } from "@/lib/api/endpoints";
-import type { Patient } from "@/lib/api/types";
+import type { Patient, PatientStatus } from "@/lib/api/types";
 
 const emptyPatient = { name: "", age: "", gender: "", phone: "", email: "", history: "" };
+const patientStatuses: PatientStatus[] = ["active", "improving", "healed", "inactive", "relapsed"];
+const statusLabels: Record<PatientStatus, string> = {
+  active: "Active",
+  improving: "Improving",
+  healed: "Healed",
+  inactive: "Inactive",
+  relapsed: "Relapsed",
+};
+const statusStyles: Record<PatientStatus, string> = {
+  active: "bg-slate-100 text-slate-700",
+  improving: "bg-sky-100 text-sky-700",
+  healed: "bg-emerald-100 text-emerald-700",
+  inactive: "bg-zinc-100 text-zinc-700",
+  relapsed: "bg-amber-100 text-amber-800",
+};
 
 export function PatientsPage() {
   const router = useRouter();
@@ -58,6 +74,20 @@ export function PatientsPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["patients"] });
       toast.success("Patient deleted");
+    },
+    onError: (error) => showError(error),
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: PatientStatus }) => api.updatePatient(id, { status }),
+    onSuccess: async (patient) => {
+      setSelectedPatient(patient);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["patients"] }),
+        queryClient.invalidateQueries({ queryKey: ["statistics"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+      ]);
+      toast.success("Patient status updated");
     },
     onError: (error) => showError(error),
   });
@@ -111,6 +141,7 @@ export function PatientsPage() {
               <TableHeader className="bg-slate-50">
                 <TableRow>
                   <TableHead>Patient</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Added</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -119,7 +150,7 @@ export function PatientsPage() {
               <TableBody>
                 {filteredPatients.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center text-slate-500">
+                    <TableCell colSpan={5} className="h-24 text-center text-slate-500">
                       No patients found.
                     </TableCell>
                   </TableRow>
@@ -138,6 +169,9 @@ export function PatientsPage() {
                             </p>
                           </div>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={patient.status} />
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1 text-sm text-slate-600">
@@ -241,6 +275,38 @@ export function PatientsPage() {
                 <Info label="Phone" value={selectedPatient.phone || "N/A"} />
                 <Info label="Email" value={selectedPatient.email || "N/A"} />
                 <Info label="Registered" value={format(new Date(selectedPatient.createdAt), "MMM d, yyyy")} />
+                <div className="overflow-hidden">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
+                  <select
+                    className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
+                    value={selectedPatient.status}
+                    disabled={updateStatusMutation.isPending}
+                    onChange={(event) =>
+                      updateStatusMutation.mutate({
+                        id: selectedPatient.id,
+                        status: event.target.value as PatientStatus,
+                      })
+                    }
+                  >
+                    {patientStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {statusLabels[status]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedPatient.healedAt ? (
+                  <Info label="Healed" value={format(new Date(selectedPatient.healedAt), "MMM d, yyyy")} />
+                ) : null}
+                {selectedPatient.latestHistorySnapshot ? (
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 rounded-lg border border-emerald-100 bg-emerald-50/60 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">History Snapshot</p>
+                    <p className="mt-1 text-sm text-emerald-900">
+                      Version {selectedPatient.latestHistorySnapshot.version} saved on{" "}
+                      {format(new Date(selectedPatient.latestHistorySnapshot.createdAt), "MMM d, yyyy h:mm a")}
+                    </p>
+                  </div>
+                ) : null}
                 {selectedPatient.history ? (
                   <div className="col-span-1 sm:col-span-2 lg:col-span-4">
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Initial History</p>
@@ -296,6 +362,10 @@ export function PatientsPage() {
       </Dialog>
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: PatientStatus }) {
+  return <Badge className={statusStyles[status]}>{statusLabels[status]}</Badge>;
 }
 
 function Info({ label, value }: { label: string; value: string }) {

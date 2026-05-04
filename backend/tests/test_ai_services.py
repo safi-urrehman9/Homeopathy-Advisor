@@ -26,6 +26,7 @@ def test_deepseek_complete_json_returns_empty_dict_for_invalid_json(app, monkeyp
         assert req.full_url == "https://api.deepseek.test/chat/completions"
         body = json.loads(req.data.decode("utf-8"))
         assert body["model"] == "deepseek-v4-pro"
+        assert body["temperature"] == 0
         assert body["response_format"] == {"type": "json_object"}
         return FakeResponse({"choices": [{"message": {"content": "not-json"}}]})
 
@@ -41,6 +42,7 @@ def test_deepseek_complete_text_uses_fast_model_and_disabled_thinking(app, monke
     def fake_urlopen(req, timeout):
         body = json.loads(req.data.decode("utf-8"))
         assert body["model"] == "deepseek-v4-flash"
+        assert body["temperature"] == 0
         assert body["thinking"] == {"type": "disabled"}
         return FakeResponse({"choices": [{"message": {"content": " Structured symptoms "}}]})
 
@@ -275,6 +277,47 @@ def test_ai_advisor_decomposes_and_merges_repertory_queries(app):
     assert result["_meta"]["retrieval"]["rubricCount"] == 2
 
 
+def test_ai_advisor_prioritizes_extracted_rubric_suggestions_for_repertory(app):
+    calls = []
+
+    class FakeOorep:
+        def search_repertory(self, symptom, max_results=8):
+            calls.append(symptom)
+            return {
+                "rubrics": [
+                    {
+                        "rubric": symptom,
+                        "repertory": "kent",
+                        "remedies": [{"name": "Bryonia", "weight": 4}],
+                    }
+                ],
+                "remedyStats": [{"name": "Bryonia", "count": 1, "cumulativeWeight": 4}],
+            }
+
+        def search_materia_medica(self, symptom, remedy=None, max_results=5):
+            return {"results": []}
+
+    class FakeDeepSeek:
+        def complete_json(self, prompt, model, system=None):
+            if "Split this homeopathic case" in prompt:
+                return {"symptoms": ["generic headache query"]}
+            return {"remedies": [{"rank": "PRIMARY", "remedy": "Bryonia"}]}
+
+    symptoms = (
+        "## Chief Complaints\n"
+        "- Headache | Modalities: worse motion\n\n"
+        "## Rubric Suggestions\n"
+        "- Head > Pain > Motion agg.\n"
+        "- Head > Pain > Lying > Amel.\n"
+    )
+
+    with app.app_context():
+        AiAdvisorService(deepseek=FakeDeepSeek(), oorep=FakeOorep()).suggest_remedies(symptoms)
+
+    assert calls[:2] == ["Head > Pain > Motion agg.", "Head > Pain > Lying > Amel."]
+    assert "generic headache query" in calls
+
+
 def test_ai_advisor_falls_back_to_original_symptoms_when_decomposition_empty(app):
     calls = []
 
@@ -326,6 +369,297 @@ def test_ai_advisor_returns_insufficient_evidence_without_reasoning(app):
     assert result["differentiationLogic"] == ""
     assert result["remedies"] == []
     assert result["evidenceQuality"] == "insufficient"
+
+
+def test_ai_advisor_defers_remedies_when_repertory_evidence_is_weak(app):
+    class FakeOorep:
+        def search_repertory(self, symptom, max_results=8):
+            return {
+                "rubrics": [
+                    {
+                        "rubric": "Head > Pain > Motion agg.",
+                        "repertory": "kent",
+                        "remedies": [{"name": "Bryonia", "weight": 1}],
+                    },
+                    {
+                        "rubric": "Mind > Irritability",
+                        "repertory": "kent",
+                        "remedies": [{"name": "Nux Vomica", "weight": 1}],
+                    },
+                ],
+                "remedyStats": [
+                    {"name": "Bryonia", "count": 1, "cumulativeWeight": 1},
+                    {"name": "Nux Vomica", "count": 1, "cumulativeWeight": 1},
+                ],
+            }
+
+        def search_materia_medica(self, symptom, remedy=None, max_results=5):
+            raise AssertionError("Weak evidence should not run materia lookup")
+
+    class FakeDeepSeek:
+        def complete_json(self, prompt, model, system=None):
+            if "Split this homeopathic case" in prompt:
+                return {"symptoms": ["Headache worse motion"]}
+            raise AssertionError("Weak evidence should not run remedy reasoning")
+
+    with app.app_context():
+        result = AiAdvisorService(deepseek=FakeDeepSeek(), oorep=FakeOorep()).suggest_remedies("Headache worse motion")
+
+    assert result["remedies"] == []
+    assert result["evidenceQuality"] == "weak"
+    assert "too weak for remedy selection" in result["issues"]
+    assert result["caseTakingQuestions"]
+
+
+def test_ai_advisor_defers_remedies_for_urgent_red_flags(app):
+    class FakeOorep:
+        def search_repertory(self, symptom, max_results=8):
+            raise AssertionError("Urgent red flags should not run repertory lookup")
+
+    class FakeDeepSeek:
+        def complete_json(self, prompt, model, system=None):
+            raise AssertionError("Urgent red flags should not run remedy reasoning")
+
+    symptoms = (
+        "Sudden worst headache of life with repeated vomiting, neck stiffness, confusion, "
+        "and weakness in the right arm starting one hour ago."
+    )
+
+    with app.app_context():
+        result = AiAdvisorService(deepseek=FakeDeepSeek(), oorep=FakeOorep()).suggest_remedies(symptoms)
+
+    assert result["remedies"] == []
+    assert result["evidenceQuality"] == "urgent_referral"
+    assert "urgent conventional medical assessment" in result["issues"]
+    assert "not a diagnosis" in result["issues"]
+    assert result["_meta"]["safety"]["triage"] == "urgent_referral"
+
+
+def test_ai_advisor_filters_model_remedies_without_retrieved_evidence(app):
+    class FakeOorep:
+        def search_repertory(self, symptom, max_results=8):
+            return {
+                "rubrics": [
+                    {
+                        "rubric": "Head > Pain > Motion agg.",
+                        "repertory": "kent",
+                        "remedies": [{"name": "Bryonia", "weight": 4}],
+                    }
+                ],
+                "remedyStats": [{"name": "Bryonia", "count": 1, "cumulativeWeight": 4}],
+            }
+
+        def search_materia_medica(self, symptom, remedy=None, max_results=5):
+            return {"results": []}
+
+    class FakeDeepSeek:
+        def complete_json(self, prompt, model, system=None):
+            if "Split this homeopathic case" in prompt:
+                return {"symptoms": ["Headache worse motion"]}
+            return {
+                "issues": "Headache worse motion.",
+                "differentiationLogic": "Bryonia is supported; Nux Vomica is not in retrieved evidence.",
+                "remedies": [
+                    {"rank": "PRIMARY", "remedy": "bryonia"},
+                    {"rank": "ALTERNATIVE", "remedy": "Nux Vomica"},
+                ],
+            }
+
+    with app.app_context():
+        result = AiAdvisorService(deepseek=FakeDeepSeek(), oorep=FakeOorep()).suggest_remedies("Headache worse motion")
+
+    assert [item["remedy"] for item in result["remedies"]] == ["Bryonia"]
+
+
+def test_ai_advisor_sample_symptom_flow_returns_validated_evidence_output(app):
+    class FakeOorep:
+        def search_repertory(self, symptom, max_results=8):
+            if "motion" in symptom.lower():
+                return {
+                    "rubrics": [
+                        {
+                            "rubric": "Head > Pain > Motion agg.",
+                            "repertory": "kent",
+                            "remedies": [
+                                {"name": "Bryonia", "weight": 4},
+                                {"name": "Nux Vomica", "weight": 2},
+                            ],
+                        }
+                    ],
+                    "remedyStats": [
+                        {"name": "Bryonia", "count": 1, "cumulativeWeight": 4},
+                        {"name": "Nux Vomica", "count": 1, "cumulativeWeight": 2},
+                    ],
+                }
+            return {
+                "rubrics": [
+                    {
+                        "rubric": "Rectum > Constipation",
+                        "repertory": "kent",
+                        "remedies": [
+                            {"name": "Bryonia", "weight": 3},
+                            {"name": "Nux Vomica", "weight": 3},
+                        ],
+                    }
+                ],
+                "remedyStats": [
+                    {"name": "Bryonia", "count": 1, "cumulativeWeight": 3},
+                    {"name": "Nux Vomica", "count": 1, "cumulativeWeight": 3},
+                ],
+            }
+
+        def search_materia_medica(self, symptom, remedy=None, max_results=5):
+            return {
+                "results": [
+                    {
+                        "remedy": remedy,
+                        "materiaMedica": "boericke",
+                        "sections": [{"heading": "Head", "content": "Headache worse motion and better rest."}],
+                    }
+                ]
+            }
+
+    class FakeDeepSeek:
+        def complete_json(self, prompt, model, system=None):
+            if "Split this homeopathic case" in prompt:
+                return {"symptoms": ["bursting headache worse motion", "constipation with dry mouth"]}
+            assert "medical red flags" in prompt
+            assert "remedyScores" in prompt
+            return {
+                "issues": "Bursting headache worse motion with constipation and dry mouth.",
+                "differentiationLogic": "Bryonia has broader, higher-grade rubric support than Nux Vomica.",
+                "remedies": [
+                    {
+                        "rank": "PRIMARY",
+                        "remedy": "Bryonia",
+                        "matchPercentage": 50,
+                        "reasoning": "Matches motion aggravation and dryness.",
+                        "dosage": "For qualified clinician review.",
+                        "followUp": "Review progress and red flags.",
+                        "evidence": [{"source": "kent", "type": "repertory", "text": "Head > Pain > Motion agg."}],
+                    },
+                    {
+                        "rank": "ALTERNATIVE",
+                        "remedy": "Nux Vomica",
+                        "matchPercentage": 50,
+                        "reasoning": "Some constipation support but less total evidence.",
+                        "dosage": "For qualified clinician review.",
+                        "followUp": "Review progress.",
+                        "evidence": [{"source": "kent", "type": "repertory", "text": "Rectum > Constipation"}],
+                    },
+                    {"rank": "UNSUPPORTED", "remedy": "Belladonna"},
+                ],
+            }
+
+    sample_symptoms = (
+        "Bursting headache since morning, worse from the slightest motion and better lying still, "
+        "with dry mouth, irritability, and constipation."
+    )
+
+    with app.app_context():
+        result = AiAdvisorService(deepseek=FakeDeepSeek(), oorep=FakeOorep()).suggest_remedies(sample_symptoms)
+
+    assert [item["remedy"] for item in result["remedies"]] == ["Bryonia", "Nux Vomica"]
+    assert result["remedies"][0]["matchPercentage"] == 88
+    assert result["remedies"][0]["evidenceScore"]["quality"] == "strong"
+    assert result["evidenceQuality"] == "strong"
+    assert result["_meta"]["retrieval"]["queryCount"] == 2
+    assert result["_meta"]["retrieval"]["rubricCount"] == 2
+    assert result["_meta"]["retrieval"]["candidateCount"] == 2
+    assert isinstance(result["_meta"]["retrieval"]["elapsedMs"], int)
+
+
+def test_ai_advisor_uses_compact_materia_medica_query(app):
+    long_structured_symptoms = (
+        "## Chief Complaints\n"
+        "- Bursting frontal headache | Location: frontal head | Sensation: bursting | Modalities: worse motion, "
+        "better lying still, better dark room | Concomitants: irritability, dry mouth\n\n"
+        "## Generals\n"
+        "- Thirst for large quantities\n"
+        "- Constipation with hard dry stool for two days\n\n"
+        "## Rubric Suggestions\n"
+        "- Head > Pain > Motion agg.\n"
+        "- Stomach > Thirst > Large quantities\n"
+        "- Rectum > Constipation > Hard stool"
+    )
+    materia_queries = []
+
+    class FakeOorep:
+        def search_repertory(self, symptom, max_results=8):
+            return {
+                "rubrics": [
+                    {
+                        "rubric": "Head > Pain > Motion agg.",
+                        "repertory": "kent",
+                        "remedies": [{"name": "Bryonia", "weight": 4}],
+                    }
+                ],
+                "remedyStats": [{"name": "Bryonia", "count": 1, "cumulativeWeight": 4}],
+            }
+
+        def search_materia_medica(self, symptom, remedy=None, max_results=5):
+            materia_queries.append(symptom)
+            assert len(symptom) <= 200
+            assert "##" not in symptom
+            assert "Rubric Suggestions" not in symptom
+            return {"results": []}
+
+    class FakeDeepSeek:
+        def complete_json(self, prompt, model, system=None):
+            if "Split this homeopathic case" in prompt:
+                return {"symptoms": ["Headache worse motion"]}
+            return {"remedies": [{"rank": "PRIMARY", "remedy": "Bryonia"}]}
+
+    with app.app_context():
+        AiAdvisorService(deepseek=FakeDeepSeek(), oorep=FakeOorep()).suggest_remedies(long_structured_symptoms)
+
+    assert materia_queries == [
+        "Bursting frontal headache bursting worse motion better lying still better dark room irritability dry mouth Thirst for large quantities Constipation with hard dry stool for two days"
+    ]
+
+
+def test_ai_advisor_continues_when_materia_medica_lookup_fails(app):
+    class FakeOorep:
+        def search_repertory(self, symptom, max_results=8):
+            return {
+                "rubrics": [
+                    {
+                        "rubric": "Head > Pain > Motion agg.",
+                        "repertory": "kent",
+                        "remedies": [{"name": "Bryonia", "weight": 4}],
+                    }
+                ],
+                "remedyStats": [{"name": "Bryonia", "count": 1, "cumulativeWeight": 4}],
+            }
+
+        def search_materia_medica(self, symptom, remedy=None, max_results=5):
+            raise ApiError("OOREP lookup failed.", status_code=502, code="oorep_failed")
+
+    class FakeDeepSeek:
+        def complete_json(self, prompt, model, system=None):
+            if "Split this homeopathic case" in prompt:
+                return {"symptoms": ["Headache worse motion"]}
+            assert '"materiaMedica": []' in prompt
+            return {"remedies": [{"rank": "PRIMARY", "remedy": "Bryonia"}]}
+
+    with app.app_context():
+        result = AiAdvisorService(deepseek=FakeDeepSeek(), oorep=FakeOorep()).suggest_remedies("Headache worse motion")
+
+    assert result["remedies"][0]["remedy"] == "Bryonia"
+
+
+def test_remedy_prompt_requires_safety_triage_and_clinician_review(app):
+    with app.app_context():
+        prompt = AiAdvisorService(deepseek=object(), oorep=object())._remedy_prompt(
+            symptoms="Sudden severe headache with vomiting and neck stiffness.",
+            patient_summary="",
+            recent_consultations=[],
+            evidence={"rubrics": [], "materiaMedica": [], "remedyScores": {}},
+        )
+
+    assert "red flags" in prompt
+    assert "not a diagnosis" in prompt
+    assert "qualified clinician" in prompt
 
 
 def test_compact_evidence_truncates_materia_medica_at_sentence_boundary(app):

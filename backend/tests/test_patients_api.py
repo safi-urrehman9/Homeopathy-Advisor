@@ -1,5 +1,5 @@
 from app.extensions import db
-from app.models import Patient
+from app.models import Patient, PatientHistorySnapshot
 
 
 def test_patient_crud_is_scoped_to_authenticated_doctor(client, auth_headers, other_auth_headers):
@@ -60,3 +60,91 @@ def test_search_patients_matches_name_phone_and_email(client, auth_headers):
 
     assert response.status_code == 200
     assert [patient["name"] for patient in response.get_json()["data"]] == ["Omar"]
+
+
+def test_patient_status_defaults_and_transitions_to_healed_create_snapshot(app, client, auth_headers):
+    patient = client.post(
+        "/api/v1/patients",
+        json={"name": "Leena Shah", "history": "Eczema worse in winter"},
+        headers=auth_headers,
+    ).get_json()["data"]
+
+    assert patient["status"] == "active"
+    assert patient["statusUpdatedAt"]
+    assert patient["healedAt"] is None
+
+    improving_response = client.patch(
+        f"/api/v1/patients/{patient['id']}",
+        json={"status": "improving"},
+        headers=auth_headers,
+    )
+    assert improving_response.status_code == 200
+    assert improving_response.get_json()["data"]["status"] == "improving"
+
+    healed_response = client.patch(
+        f"/api/v1/patients/{patient['id']}",
+        json={"status": "healed"},
+        headers=auth_headers,
+    )
+
+    assert healed_response.status_code == 200
+    healed = healed_response.get_json()["data"]
+    assert healed["status"] == "healed"
+    assert healed["healedAt"]
+    assert healed["latestHistorySnapshot"]["version"] == 1
+    assert healed["latestHistorySnapshot"]["eventType"] == "marked_healed"
+
+    with app.app_context():
+        snapshots = PatientHistorySnapshot.query.filter_by(patient_id=patient["id"]).all()
+        assert len(snapshots) == 1
+        assert snapshots[0].version == 1
+        assert snapshots[0].event_type == "marked_healed"
+        assert snapshots[0].payload["patient"]["name"] == "Leena Shah"
+        assert snapshots[0].payload["patient"]["status"] == "healed"
+        assert snapshots[0].payload["consultations"] == []
+
+
+def test_healed_patient_updates_append_snapshots_without_overwriting(app, client, auth_headers):
+    patient = client.post("/api/v1/patients", json={"name": "Nadia"}, headers=auth_headers).get_json()["data"]
+    client.patch(f"/api/v1/patients/{patient['id']}", json={"status": "healed"}, headers=auth_headers)
+
+    with app.app_context():
+        first_payload = PatientHistorySnapshot.query.filter_by(patient_id=patient["id"]).one().payload_json
+
+    update_response = client.patch(
+        f"/api/v1/patients/{patient['id']}",
+        json={"phone": "555-0199"},
+        headers=auth_headers,
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.get_json()["data"]["latestHistorySnapshot"]["version"] == 2
+    with app.app_context():
+        snapshots = PatientHistorySnapshot.query.filter_by(patient_id=patient["id"]).order_by(PatientHistorySnapshot.version).all()
+        assert [snapshot.version for snapshot in snapshots] == [1, 2]
+        assert snapshots[0].payload_json == first_payload
+        assert snapshots[1].event_type == "healed_patient_updated"
+        assert snapshots[1].payload["patient"]["phone"] == "555-0199"
+
+
+def test_consultation_for_healed_patient_appends_snapshot(app, client, auth_headers):
+    patient = client.post("/api/v1/patients", json={"name": "Omar"}, headers=auth_headers).get_json()["data"]
+    client.patch(f"/api/v1/patients/{patient['id']}", json={"status": "healed"}, headers=auth_headers)
+
+    response = client.post(
+        "/api/v1/consultations",
+        json={
+            "patientId": patient["id"],
+            "symptoms": "Follow-up sleep stable",
+            "prescribedRemedy": "Sulphur",
+            "potency": "200C",
+            "notes": "No relapse",
+        },
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 201
+    with app.app_context():
+        snapshots = PatientHistorySnapshot.query.filter_by(patient_id=patient["id"]).order_by(PatientHistorySnapshot.version).all()
+        assert [snapshot.event_type for snapshot in snapshots] == ["marked_healed", "healed_consultation_added"]
+        assert snapshots[1].payload["consultations"][0]["prescribedRemedy"] == "Sulphur"
